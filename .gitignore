@@ -146,6 +146,7 @@ venv.bak/
 
 # Testing
 test_data.csv
+test_data_clean.csv
 
 # Spyder project settings
 .spyderproject
