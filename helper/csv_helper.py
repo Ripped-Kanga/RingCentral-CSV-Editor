@@ -10,7 +10,8 @@ import os
 import csv
 import re
 from datetime import datetime
-import pprint
+from pathlib import Path
+from typing import Iterable
 
 
 
@@ -18,7 +19,7 @@ class RingCentralCSV:
 	'''
 	Helper class to handle the RingCentral address book file.
 	'''
-	def __init__(self, csv_in=None, csv_path_out="result"):
+	def __init__(self, csv_in=None, csv_path_out="results"):
 		self.csv_in = csv_in
 		self.csv_path_out = csv_path_out
 
@@ -29,39 +30,44 @@ class RingCentralCSV:
 			os.makedirs(csv_path_out, exist_ok=True)
 
 
-	def checker(self, csv_in_path: str) -> list:
+	def checker(self, csv_in_path: str, required_headers: Iterable[str] = ("First Name", "Surname")) -> list[dict]:
 		'''
-		Checks the incoming csv file to see if it has RingCentral junk comment data. If it does
-		strip the junk data out and create a new dict starting from row 24.
-		If it doesn't, ingest the csv, checking that the headers are correct and create a new dict.
+		Check the file until the real header row is found, then parse into list dict. 
+		Returns list dict, sets self.fieldnames.
+		
+		required_headers: headers that MUST appear in the header row
 		'''
-		with open(csv_in_path, newline="", encoding="utf-8") as f:
-			first_line = f.readline()
-			check_junk = (first_line or "").strip().lstrip('"')
+		path = Path(csv_in_path).expanduser()
 
-		with open(csv_in_path, newline="", encoding="utf-8") as csvfile:
+		if not path.exists():
+			raise FileNotFoundError(f"CSV not found: {path}")
 
-			if check_junk.startswith("Please follow the"):
-				header_row = 24
-				# Skip lines 1..23 as they contain junk data
-				for _ in range(header_row - 1):
-					next(csvfile, None)
+		required = {h.strip() for h in required_headers}
 
-				reader = csv.DictReader(csvfile)  # line 24 becomes the header row
-				self.fieldnames = reader.fieldnames or []
-				data_store = list(reader)
-				return (data_store)
+		with path.open("r", newline="", encoding="utf-8-sig") as f:
+			start = f.read(2048)
+			if not start.strip():
+				self.fieldnames = []
+				raise ValueError("CSV is empty (no headers).")
 
-			elif check_junk.startswith("First Name,Surname,"):
-				print("File is clean, writing csv data to dictionary...")
-				reader = csv.DictReader(csvfile, delimiter=",")
-				self.fieldnames = reader.fieldnames or []
-				data_store = list(reader)
-				return (data_store)
+			f.seek(0)
 
-			else:
-				print("Error in csv_in condition logic")
-				exit()
+			while True:
+				pos = f.tell()
+				line = f.readline()
+
+				if line == "":
+					raise ValueError(f"Could not find header row containing {sorted(required)} in file: {path}")
+
+				row = next(csv.reader([line]))
+				row_set = {cell.strip().lstrip("\ufeff") for cell in row}
+
+				if required.issubset(row_set):
+					f.seek(pos)
+					reader = csv.DictReader(f)
+					self.fieldnames = reader.fieldnames or []
+					return list(reader)
+
 
 	def appender(self, csv_data):
 		print ("Enter your new values")
@@ -82,7 +88,7 @@ class RingCentralCSV:
 						print("Try again, or press Enter to leave blank.")
 
 			csv_data.append(new_entry)
-			pprint.pprint(csv_data, sort_dicts=False)
+
 
 			# ask to add another
 			while True:
@@ -98,17 +104,25 @@ class RingCentralCSV:
 		self.writer(path, self.fieldnames, csv_data)
 
 
-	def writer(self, path: str, fieldnames: list[str], csv_data: list[dict]) -> None:
+	def writer(self, fieldnames: list[str], csv_data: list[dict]) -> Path:
 		'''
 		Accepts incoming csv data after appended data is added to the new list. 
 		Writes a new csv file with date stamp.
 		'''
+		
+		file_date = datetime.now().strftime("%Y%m%d-%H%M")
 
-		with open(path, "w", newline="", encoding="utf-8") as f:
+		out_dir = Path(self.csv_path_out).expanduser()
+		out_dir.mkdir(parents=True, exist_ok=True)
+
+		out_path = out_dir / f"AddressBook-{file_date}.csv"
+
+		with out_path.open("w", newline="", encoding="utf-8") as f:
 			writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
 			writer.writeheader()
 			writer.writerows(csv_data)
 
+		return out_path
 
 	@staticmethod
 	def field_formatter(fieldnames, value: str) -> str:

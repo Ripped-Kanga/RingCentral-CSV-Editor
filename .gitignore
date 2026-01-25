@@ -148,6 +148,10 @@ venv.bak/
 test_data.csv
 test_data_clean.csv
 new_data.csv
+/results
+test_zero_data.csv
+test_zero_rows.csv
+test.csv
 
 # Spyder project settings
 .spyderproject
