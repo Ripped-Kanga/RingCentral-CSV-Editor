@@ -7,10 +7,9 @@ __github__ = "https://github.com/Ripped-Kanga/RingCentral-CSV-Editor\n"
 __disclaimer__ = ""
 
 import csv
+import sys
 from pathlib import Path
-
-from helper.csv_helper import RingCentralCSV
-
+from .helper.csv_helper import RingCentralCSV
 from textual.app import App, ComposeResult, Binding
 from textual.screen import ModalScreen
 from textual.containers import Vertical, Horizontal, HorizontalGroup, VerticalScroll
@@ -388,8 +387,15 @@ class RingCentralCSVApp(App):
 	"""
 	A Textual app to manage the csv imports.
 	"""
-	HELP = "test"
-	CSS_PATH = str(Path(__file__).parent / "styles" / "RingCentralCSVApp.tcss")
+	def resource_path(relative: str) -> str:
+		"""Return an absolute path to a resource for dev/pip installs and PyInstaller bundles."""
+		if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+			base = Path(sys._MEIPASS)  # PyInstaller extraction dir :contentReference[oaicite:1]{index=1}
+		else:
+			base = Path(__file__).resolve().parent
+		return str(base / relative)
+
+	CSS_PATH = CSS_PATH = resource_path("styles/RingCentralCSVApp.tcss")
 
 	BINDINGS = [
 		Binding("q", "quit", "Quit"),
@@ -465,6 +471,8 @@ class RingCentralCSVApp(App):
 			return bool(ui.csv_data)
 
 		return True
+
+
 
 if __name__ == "__main__":
 	app = RingCentralCSVApp()
