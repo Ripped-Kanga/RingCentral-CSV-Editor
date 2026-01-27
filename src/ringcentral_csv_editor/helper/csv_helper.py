@@ -7,6 +7,9 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
+import logging
+logger = logging.getLogger(__name__)
+
 
 class RingCentralCSV:
 	'''
@@ -31,16 +34,20 @@ class RingCentralCSV:
 		required_headers: headers that MUST appear in the header row
 		'''
 		path = Path(csv_in_path).expanduser()
-
+		logger.info("Reading CSV: %s", path)
+		
 		if not path.exists():
+			logger.error("CSV not found: %s", path)
 			raise FileNotFoundError(f"CSV not found: {path}")
 
-		required = {h.strip() for h in required_headers}
+		required = {str(h or "").strip() for h in required_headers}
+		logger.debug("Required headers: %s", sorted(required))
 
 		with path.open("r", newline="", encoding="utf-8-sig") as f:
 			start = f.read(2048)
 			if not start.strip():
 				self.fieldnames = []
+				logger.warning("CSV is empty (no headers): %s", path)
 				raise ValueError("CSV is empty (no headers).")
 
 			f.seek(0)
@@ -50,19 +57,27 @@ class RingCentralCSV:
 				line = f.readline()
 
 				if line == "":
+					logger.error("Header row not found in %s", path)
 					raise ValueError(f"Could not find header row containing {sorted(required)} in file: {path}")
 
 				row = next(csv.reader([line]))
-				row_set = {cell.strip().lstrip("\ufeff") for cell in row}
+				row_set = {str(cell or "").strip().lstrip("\ufeff") for cell in row}
 
 				if required.issubset(row_set):
+					logger.info("Header found at byte offset %s in %s", pos, path)
 					f.seek(pos)
-					reader = csv.DictReader(f)
+
+					reader = csv.DictReader(f, restkey="__extra__", restval="")
 					self.fieldnames = reader.fieldnames or []
+					logger.debug("Detected fieldnames: %s", self.fieldnames)
+
 					data = list(reader)
+					
+					for row in data:
+						row.pop("__extra__", None)
 
+					logger.info("Loaded %d data rows from %s", len(data), path)
 					return data
-
 
 
 	def normalise_row(self, raw_row: dict) -> dict:
@@ -84,6 +99,7 @@ class RingCentralCSV:
 		Validate + append one row to csv_data. Returns the appended cleaned row.
 		"""
 		cleaned = self.normalise_row(raw_row)
+		logger.debug("Appending row (pre-validate)")
 
 		# Check duplicates within the new row itself
 		new_nums = []
@@ -95,6 +111,7 @@ class RingCentralCSV:
 		seen_local = {}
 		for field, num in new_nums:
 			if num in seen_local:
+				
 				raise ValueError(f"Duplicate number inside new row: {num} in {seen_local[num]} and {field}")
 			seen_local[num] = field
 
@@ -102,6 +119,7 @@ class RingCentralCSV:
 		self.assert_no_duplicate_numbers(csv_data + [cleaned])
 
 		csv_data.append(cleaned)
+		logger.info("Row appended successfully. New row count: %d", len(csv_data))
 		return cleaned
 
 
@@ -137,6 +155,8 @@ class RingCentralCSV:
 		(number, first_row_index, first_field, dup_row_index, dup_field)
 		Row indexes are 0-based for your csv_data list.
 		"""
+		logger.debug("Scanning $d rows for duplicate numbers", len(rows))
+
 		seen: dict[str, tuple[int, str]] = {}
 		dups: list[tuple[str, int, str, int, str]] = []
 
@@ -153,7 +173,7 @@ class RingCentralCSV:
 					dups.append((number, first_i, first_field, i, key))
 				else:
 					seen[number] = (i, key)
-
+		logger.info("Duplicate scan complete: $d duplicates found", len(dups))
 		return dups
 
 	def format_duplicate_report(self, rows: list[dict], limit: int = 10) -> str:
