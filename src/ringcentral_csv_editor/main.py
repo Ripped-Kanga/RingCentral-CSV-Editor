@@ -2,7 +2,7 @@
 
 __author__ = "Alan Saunders"
 __purpose__ = ""
-__version__ = "0.7"
+__version__ = "0.7.1"
 __github__ = "https://github.com/Ripped-Kanga/RingCentral-CSV-Editor\n"
 __disclaimer__ = ""
 
@@ -473,7 +473,32 @@ class RingCentralCSVApp(App):
 		return True
 
 
+def request_terminal_size(rows: int = 55, cols: int = 160) -> None:
+	'''
+	Best-effort terminal resize request.
+	'''
+	try:
+		sys.stdout.write(f"\x1b[8;{rows};{cols}t")
+		sys.stdout.flush()
+	except Exception:
+		pass
+
+def request_windows_console_size(rows: int = 55, cols: int = 160) -> None:
+	'''
+	Works for older Windows Console (CMD)
+	'''
+	try:
+		if os.name == "nt":
+			os.system(f"mode con: cols={cols} lines={rows}")
+	except Exception:
+		pass
+
+def best_effort_resize(rows: int = 55, cols: int = 160) -> None:
+	request_windows_console_size(rows, cols)
+	request_terminal_size(rows, cols)
+
 
 if __name__ == "__main__":
+	best_effort_resize()
 	app = RingCentralCSVApp()
 	app.run()
