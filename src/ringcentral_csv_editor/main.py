@@ -2,12 +2,13 @@
 
 __author__ = "Alan Saunders"
 __purpose__ = ""
-__version__ = "0.7.1"
+__version__ = "0.7.5"
 __github__ = "https://github.com/Ripped-Kanga/RingCentral-CSV-Editor\n"
 __disclaimer__ = ""
 
 import csv
 import sys
+import logging
 from pathlib import Path
 from .helper.csv_helper import RingCentralCSV
 from textual.app import App, ComposeResult, Binding
@@ -114,7 +115,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 
 	def compose(self) -> ComposeResult:
 		with Vertical(id="sidebar_box"):
-			yield Label("RingCentral CSV Editor - V0.7", id="title_block")
+			yield Label(f"RingCentral CSV Editor - {__version__}", id="title_block")
 
 			with Vertical(id="file_operations_box"):
 				yield Button("Read CSV", id="read_csv", variant="default", disabled=True)
@@ -414,6 +415,7 @@ class RingCentralCSVApp(App):
 		yield VerticalScroll(ImportRingCentralCSV())
 
 	def on_mount(self) -> None:
+		setup_logging()
 		self.theme = "tokyo-night"
 
 		# Set border titles
@@ -496,6 +498,20 @@ def request_windows_console_size(rows: int = 55, cols: int = 160) -> None:
 def best_effort_resize(rows: int = 55, cols: int = 160) -> None:
 	request_windows_console_size(rows, cols)
 	request_terminal_size(rows, cols)
+
+def setup_logging() -> None:
+	log_dir = Path.home() / "ringcentral-csv-editor"
+	log_dir.mkdir(parents=True, exist_ok=True)
+	log_path = log_dir / "app.log"
+
+	logging.basicConfig(
+		level=logging.INFO,  # change to DEBUG when needed
+		format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+		handlers=[
+			logging.FileHandler(log_path, encoding="utf-8"),
+			# logging.StreamHandler(),  # optional console output
+		],
+	)
 
 
 if __name__ == "__main__":
