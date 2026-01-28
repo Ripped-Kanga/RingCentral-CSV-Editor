@@ -2,13 +2,13 @@
 
 __author__ = "Alan Saunders"
 __purpose__ = ""
-__version__ = "0.7.5"
+__version__ = "0.7.7"
 __github__ = "https://github.com/Ripped-Kanga/RingCentral-CSV-Editor\n"
 __disclaimer__ = ""
 
-import csv
 import sys
 import logging
+from importlib import resources
 from pathlib import Path
 from .helper.csv_helper import RingCentralCSV
 from textual.app import App, ComposeResult, Binding
@@ -51,6 +51,7 @@ class HelpScreen(ModalScreen[None]):
 	def on_mount(self) -> None:
 		help_modal = self.query_one("#help_modal", Vertical)
 		help_modal.border_title = "Help"
+		
 
 
 class AddRowScreen(ModalScreen[dict | None]):
@@ -495,9 +496,10 @@ def request_windows_console_size(rows: int = 55, cols: int = 160) -> None:
 	except Exception:
 		pass
 
-def best_effort_resize(rows: int = 55, cols: int = 160) -> None:
+def on_startup(rows: int = 55, cols: int = 160) -> None:
 	request_windows_console_size(rows, cols)
 	request_terminal_size(rows, cols)
+	get_logo_path()
 
 def setup_logging() -> None:
 	log_dir = Path.home() / "ringcentral-csv-editor"
@@ -513,8 +515,15 @@ def setup_logging() -> None:
 		],
 	)
 
+def get_logo_path() -> Path:
+	'''
+	Return a filesystem path to the bundled logo.
+	'''
+	logo = resources.files("ringcentral_csv_editor") / "assets" / "logo.png"
+	with resources.as_file(logo) as p:
+		return str(p)
 
 if __name__ == "__main__":
-	best_effort_resize()
+	on_startup()
 	app = RingCentralCSVApp()
 	app.run()

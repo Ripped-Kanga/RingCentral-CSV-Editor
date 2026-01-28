@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ringcentral-csv-editor"
-version = "0.7.5"
+version = "0.7.7"
 requires-python = ">=3.11"
 dependencies = ["textual>=0.60.0"]
 
@@ -16,4 +16,4 @@ ringcentral-csv-editor = "ringcentral_csv_editor.__main__:main"
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-ringcentral_csv_editor = ["styles/*.tcss"]
+ringcentral_csv_editor = ["assets/*.png", "styles/*.tcss"]
