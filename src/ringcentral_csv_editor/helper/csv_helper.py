@@ -19,12 +19,6 @@ class RingCentralCSV:
 		self.csv_in = csv_in
 		self.csv_path_out = csv_path_out
 
-		if os.path.exists(self.csv_path_out):
-			pass
-		else:
-			print(f"/{self.csv_path_out} does not exist, creating...")
-			os.makedirs(csv_path_out, exist_ok=True)
-
 
 	def checker(self, csv_in_path: str, required_headers: Iterable[str] = ("First Name", "Surname")) -> list[dict]:
 		'''
@@ -155,7 +149,7 @@ class RingCentralCSV:
 		(number, first_row_index, first_field, dup_row_index, dup_field)
 		Row indexes are 0-based for your csv_data list.
 		"""
-		logger.debug("Scanning $d rows for duplicate numbers", len(rows))
+		logger.debug("Scanning %d rows for duplicate numbers", len(rows))
 
 		seen: dict[str, tuple[int, str]] = {}
 		dups: list[tuple[str, int, str, int, str]] = []
@@ -173,7 +167,7 @@ class RingCentralCSV:
 					dups.append((number, first_i, first_field, i, key))
 				else:
 					seen[number] = (i, key)
-		logger.info("Duplicate scan complete: $d duplicates found", len(dups))
+		logger.info("Duplicate scan complete: %d duplicates found", len(dups))
 		return dups
 
 	def format_duplicate_report(self, rows: list[dict], limit: int = 10) -> str:
@@ -242,8 +236,8 @@ class RingCentralCSV:
 
 		# --- Job title / Company ---
 		if field in {"job title", "company"}:
-			if not re.fullmatch(r"[A-Za-z]+(?:[ '\-][A-Za-z]+)*", raw_value):
-				raise ValueError("Names must contain letters only (spaces, hyphens, apostrophes allowed)")
+			if not re.fullmatch(r"[A-Za-z0-9]+(?:[ '\-&.][A-Za-z0-9]+)*", raw_value):
+				raise ValueError("Must contain letters or numbers only (spaces, hyphens, apostrophes, ampersands, periods allowed)")
 			return raw_value.title()
 
 		# --- Email --- 
@@ -295,3 +289,6 @@ class RingCentralCSV:
 		# --- Source / External ID ---
 		if field in {"source", "external id"}:
 			return raw_value
+
+		# Unknown field — pass through unchanged
+		return raw_value

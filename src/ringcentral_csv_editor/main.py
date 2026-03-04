@@ -316,8 +316,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 			self.app.notify("No row selected")
 			return
 
-		key_val = row_key.value
-		idx = key_val if isinstance(key_val, int) else int(str(key_val))
+		idx = int(row_key.value)
 
 		if idx < 0 or idx >= len(self.csv_data):
 			self.app.notify("Nothing to delete")
@@ -358,9 +357,6 @@ class ImportRingCentralCSV(HorizontalGroup):
 		return dup_rows
 
 	def do_toggle_dupes(self) -> None:
-		if not hasattr(self, "show_dupes_only"):
-			self.show_dupes_only = False
-
 		if not self.csv_data:
 			self.app.notify("Load a CSV first")
 			return
@@ -389,15 +385,16 @@ class RingCentralCSVApp(App):
 	"""
 	A Textual app to manage the csv imports.
 	"""
+	@staticmethod
 	def resource_path(relative: str) -> str:
 		"""Return an absolute path to a resource for dev/pip installs and PyInstaller bundles."""
 		if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-			base = Path(sys._MEIPASS)  # PyInstaller extraction dir :contentReference[oaicite:1]{index=1}
+			base = Path(sys._MEIPASS)
 		else:
 			base = Path(__file__).resolve().parent
 		return str(base / relative)
 
-	CSS_PATH = CSS_PATH = resource_path("styles/RingCentralCSVApp.tcss")
+	CSS_PATH = resource_path("styles/RingCentralCSVApp.tcss")
 
 	BINDINGS = [
 		Binding("q", "quit", "Quit"),
@@ -499,7 +496,6 @@ def request_windows_console_size(rows: int = 55, cols: int = 160) -> None:
 def on_startup(rows: int = 55, cols: int = 160) -> None:
 	request_windows_console_size(rows, cols)
 	request_terminal_size(rows, cols)
-	get_logo_path()
 
 def setup_logging() -> None:
 	log_dir = Path.home() / "ringcentral-csv-editor"
@@ -515,12 +511,15 @@ def setup_logging() -> None:
 		],
 	)
 
-def get_logo_path() -> Path:
+def get_logo_path() -> str:
 	'''
 	Return a filesystem path to the bundled logo.
+	Safe for disk installs and PyInstaller bundles (resources are always real files).
+	For zip-based installs the returned path may not persist; use as_file() directly
+	as a context manager in the caller instead.
 	'''
-	logo = resources.files("ringcentral_csv_editor") / "assets" / "logo.png"
-	with resources.as_file(logo) as p:
+	ref = resources.files("ringcentral_csv_editor") / "assets" / "logo.png"
+	with resources.as_file(ref) as p:
 		return str(p)
 
 if __name__ == "__main__":

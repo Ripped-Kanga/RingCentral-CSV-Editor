@@ -60,10 +60,16 @@ This is a Python **Textual TUI** application (`src` layout, Python 3.11+, single
 
 **`RingCentralCSV` helper class (`csv_helper.py`):**
 - `checker()` — finds real header row, returns `list[dict]`, sets `self.fieldnames`
-- `field_formatter(field, value)` — static normaliser: names → `.title()`, emails → lowercase + validated, AU phone numbers → E.164 (`+61...`)
-- `find_duplicate_numbers()` — scans phone fields (`home number`, `business number`, `mobile number`, `company main number`) across all rows
+- `field_formatter(field, value)` — static normaliser: names/job title/company → `.title()`, emails → lowercase + validated, AU phone numbers → E.164 (`+61...`), source/external id → passthrough
+- `find_duplicate_numbers()` — scans phone fields (`home number`, `business number`, `mobile number`, `company main number`) across all rows; returns list of `(number, first_i, first_field, dup_i, dup_field)` tuples
+- `format_duplicate_report()` — formats `find_duplicate_numbers()` output into a human-readable string (used after read)
+- `assert_no_duplicate_numbers()` — raises `ValueError` with the formatted report if duplicates exist (used on append)
 - `append_row()` — normalises via `normalise_row()` then calls `assert_no_duplicate_numbers()` before appending
 - `writer()` — writes to `results/` dir (created if missing)
+
+**Gotcha:** `RingCentralCSV()` creates the `results/` directory on every instantiation — including for duplicate-check-only calls. This is harmless but worth knowing if the class is reused.
+
+**`RingCentralCSVApp` guards:** `check_action()` enforces the same rules as button disabling — keybindings are silently blocked when the precondition isn't met (e.g. `r` is blocked unless a `.csv` is selected).
 
 **Styling:** `styles/RingCentralCSVApp.tcss` — Textual CSS; uses `tokyo-night` theme. Logo bundled in `assets/logo.png`, both included via `pyproject.toml` `package-data`.
 
