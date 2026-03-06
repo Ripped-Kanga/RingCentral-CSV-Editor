@@ -9,6 +9,7 @@ __disclaimer__ = ""
 import sys
 import os
 import logging
+from collections.abc import Iterable
 from importlib import resources
 from pathlib import Path
 from .helper.csv_helper import RingCentralCSV
@@ -170,6 +171,13 @@ class EditRowScreen(ModalScreen[dict | None]):
 		self.query_one("#add_row_modal", Vertical).border_title = "Edit Row"
 
 
+class VisibleDirectoryTree(DirectoryTree):
+	"""DirectoryTree that hides dotfiles and hidden directories."""
+
+	def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
+		return [p for p in paths if not p.name.startswith(".")]
+
+
 class WriteDirectoryScreen(ModalScreen[Path | None]):
 	"""
 	Browse and confirm an output directory before writing the CSV.
@@ -186,7 +194,7 @@ class WriteDirectoryScreen(ModalScreen[Path | None]):
 			yield Label("Output directory:", id="write_dir_label")
 			yield Input(value=str(self._selected_dir), id="write_dir_input")
 			with VerticalScroll(id="write_dir_tree_box"):
-				yield DirectoryTree(str(Path.home()), id="write_dir_tree")
+				yield VisibleDirectoryTree(str(Path.home()), id="write_dir_tree")
 			with Horizontal(id="add_row_buttons"):
 				yield Button("Save here", id="save_dir", variant="primary")
 				yield Button("Cancel", id="cancel_dir", variant="default")
