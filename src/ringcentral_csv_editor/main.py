@@ -276,10 +276,11 @@ class ImportRingCentralCSV(HorizontalGroup):
 
 			with Vertical(id="directory_box"):
 				yield Label(
-					"Type, paste, or drag a .csv path here, then press Enter:",
+					"Type or paste a .csv path and press Enter, or Browse:",
 					id="file_path_label",
 				)
 				yield Input(placeholder="/path/to/AddressBook.csv", id="file_path_input")
+				yield Button("Browse...", id="browse_file", variant="default")
 
 		with Vertical(id="csv_viewer", classes="content_box"):
 			yield Static("No file selected:", id="selected_path", classes="sub-header")
@@ -374,6 +375,10 @@ class ImportRingCentralCSV(HorizontalGroup):
 			self.do_write_csv()
 			return
 
+		if btn == "browse_file":
+			self.do_browse_file()
+			return
+
 	# ---------------- Actions ----------------
 
 	def do_new_address_book(self) -> None:
@@ -386,6 +391,29 @@ class ImportRingCentralCSV(HorizontalGroup):
 		self.query_one("#file_update", Static).update("There is currently 0 rows in the csv file.")
 		self.refresh_controls()
 		self.app.notify("New address book ready — append rows then write to save")
+
+	def do_browse_file(self) -> None:
+		try:
+			import tkinter as tk
+			from tkinter import filedialog
+			root = tk.Tk()
+			root.withdraw()
+			root.wm_attributes("-topmost", True)
+			path = filedialog.askopenfilename(
+				title="Select CSV file",
+				filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+			)
+			root.destroy()
+		except Exception:
+			self.app.notify("File browser not available — type the path manually", severity="warning")
+			return
+		if not path:
+			return
+		file_input = self.query_one("#file_path_input", Input)
+		file_input.value = path
+		self.selected_path = Path(path)
+		self.refresh_controls()
+		self.do_read_csv()
 
 	def do_read_csv(self) -> None:
 		if not self.can_read_csv():

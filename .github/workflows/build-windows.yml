@@ -42,8 +42,8 @@ jobs:
       - name: Build executable with PyInstaller
         run: |
           pyinstaller --onefile --name ringcentral-csv-editor `
-            --add-data "src/ringcentral_csv_editor/styles;ringcentral_csv_editor/styles" `
-            --add-data "src/ringcentral_csv_editor/assets;ringcentral_csv_editor/assets" `
+            --add-data "src/ringcentral_csv_editor/styles;styles" `
+            --add-data "src/ringcentral_csv_editor/assets;assets" `
             src/ringcentral_csv_editor/__main__.py
 
       - name: Install Inno Setup
