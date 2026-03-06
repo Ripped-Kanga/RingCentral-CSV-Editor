@@ -2,7 +2,7 @@
 
 __author__ = "Alan Saunders"
 __purpose__ = ""
-__version__ = "0.8.0"
+__version__ = "0.8.5"
 __github__ = "https://github.com/Ripped-Kanga/RingCentral-CSV-Editor\n"
 __disclaimer__ = ""
 
