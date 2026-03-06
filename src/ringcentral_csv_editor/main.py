@@ -803,17 +803,6 @@ def setup_logging() -> None:
 		],
 	)
 
-def get_logo_path() -> str:
-	'''
-	Return a filesystem path to the bundled logo.
-	Safe for disk installs and PyInstaller bundles (resources are always real files).
-	For zip-based installs the returned path may not persist; use as_file() directly
-	as a context manager in the caller instead.
-	'''
-	ref = resources.files("ringcentral_csv_editor") / "assets" / "logo.png"
-	with resources.as_file(ref) as p:
-		return str(p)
-
 if __name__ == "__main__":
 	on_startup()
 	app = RingCentralCSVApp()

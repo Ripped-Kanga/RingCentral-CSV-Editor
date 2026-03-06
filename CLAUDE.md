@@ -68,7 +68,6 @@ This is a Python **Textual TUI** application (`src` layout, Python 3.11+, single
 - `request_terminal_size(rows, cols)` — sends ANSI escape to resize terminal (best-effort)
 - `request_windows_console_size(rows, cols)` — resizes Windows CMD console via `mode con:`
 - `setup_logging()` — configures file logging to `~/ringcentral-csv-editor/app.log` at INFO level; called in `on_mount`
-- `get_logo_path()` — returns a filesystem path to the bundled `assets/logo.png` using `importlib.resources`, safe for both editable installs and PyInstaller bundles
 
 **Data flow:**
 1. User types/pastes/drags a `.csv` file path into the File Import input and presses Enter (surrounding quotes are stripped automatically)
@@ -111,4 +110,4 @@ This is a Python **Textual TUI** application (`src` layout, Python 3.11+, single
 
 **Logging:** Writes to `~/ringcentral-csv-editor/app.log` at INFO level (set up in `setup_logging()` called in `on_mount`). Change `logging.INFO` to `logging.DEBUG` for verbose output during development.
 
-**Version:** Tracked manually in both `pyproject.toml` (`version = "0.8.0"`) and `main.py` (`__version__ = "0.8.0"`). Keep these in sync when bumping.
+**Version:** Tracked manually in both `pyproject.toml` (`version = "0.8.5"`) and `main.py` (`__version__ = "0.8.5"`). Keep these in sync when bumping.
