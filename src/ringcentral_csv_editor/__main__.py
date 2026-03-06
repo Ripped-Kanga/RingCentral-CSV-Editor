@@ -1,5 +1,8 @@
 
-from .main import RingCentralCSVApp, on_startup
+try:
+    from .main import RingCentralCSVApp, on_startup
+except ImportError:
+    from ringcentral_csv_editor.main import RingCentralCSVApp, on_startup
 
 def main() -> None:
     on_startup()

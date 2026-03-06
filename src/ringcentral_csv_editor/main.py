@@ -392,9 +392,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 		self.refresh_controls()
 		self.app.notify("New address book ready — append rows then write to save")
 
-	def _native_file_picker(self) -> str | None:
-		"""Open a native OS file-picker and return the chosen path, or None on cancel/failure."""
-		# Try tkinter (works on Windows and Linux with python3-tk installed)
+	def do_browse_file(self) -> None:
 		try:
 			import tkinter as tk
 			from tkinter import filedialog
@@ -406,39 +404,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 				filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
 			)
 			root.destroy()
-			return path or None
 		except Exception:
-			pass
-
-		# Try zenity (GNOME / GTK environments on Linux)
-		try:
-			import subprocess
-			result = subprocess.run(
-				["zenity", "--file-selection", "--title=Select CSV file", "--file-filter=CSV files (*.csv) | *.csv"],
-				capture_output=True, text=True, timeout=60,
-			)
-			if result.returncode == 0:
-				return result.stdout.strip() or None
-		except Exception:
-			pass
-
-		# Try kdialog (KDE environments on Linux)
-		try:
-			import subprocess
-			result = subprocess.run(
-				["kdialog", "--getopenfilename", ".", "*.csv", "--title", "Select CSV file"],
-				capture_output=True, text=True, timeout=60,
-			)
-			if result.returncode == 0:
-				return result.stdout.strip() or None
-		except Exception:
-			pass
-
-		return None
-
-	def do_browse_file(self) -> None:
-		path = self._native_file_picker()
-		if path is None:
 			self.app.notify("File browser not available — type the path manually", severity="warning")
 			return
 		if not path:
