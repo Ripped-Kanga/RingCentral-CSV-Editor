@@ -305,7 +305,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 
 		path = Path(raw).expanduser()
 		self.selected_path = path
-		self.query_one("#selected_path", Static).update(f"File: {path}")
+		self.query_one("#selected_path", Static).update(f"File: {path.name}")
 
 		if path.suffix.lower() != ".csv":
 			self.app.notify("Not a .csv file — pick a .csv to load")
@@ -369,6 +369,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 			self.populate_table(self.csv_data)
 
 			row_count = len(self.csv_data)
+			self.query_one("#selected_path", Static).update(f"File: {path.name}")
 			self.query_one("#file_update", Static).update(
 				f"There is currently {row_count} rows in the csv file."
 			)
