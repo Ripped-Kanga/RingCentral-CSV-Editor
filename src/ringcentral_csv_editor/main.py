@@ -15,7 +15,7 @@ from .helper.csv_helper import RingCentralCSV
 from textual.app import App, ComposeResult, Binding
 from textual.screen import ModalScreen
 from textual.containers import Vertical, Horizontal, HorizontalGroup, VerticalScroll
-from textual.widgets import Footer, Header, Input, Button, Static, Label, DataTable
+from textual.widgets import Footer, Header, Input, Button, Static, Label, DataTable, DirectoryTree
 
 class HelpScreen(ModalScreen[None]):
 	def compose(self) -> ComposeResult:
@@ -168,6 +168,57 @@ class EditRowScreen(ModalScreen[dict | None]):
 
 	def on_mount(self) -> None:
 		self.query_one("#add_row_modal", Vertical).border_title = "Edit Row"
+
+
+class WriteDirectoryScreen(ModalScreen[Path | None]):
+	"""
+	Browse and confirm an output directory before writing the CSV.
+	Clicking a directory or file (uses its parent) updates the path input.
+	The user can also type a path directly. Dismisses with the chosen Path or None.
+	"""
+
+	def __init__(self, default_dir: Path):
+		super().__init__()
+		self._selected_dir = default_dir
+
+	def compose(self) -> ComposeResult:
+		with Vertical(id="write_dir_modal"):
+			yield Label("Output directory:", id="write_dir_label")
+			yield Input(value=str(self._selected_dir), id="write_dir_input")
+			with VerticalScroll(id="write_dir_tree_box"):
+				yield DirectoryTree(str(Path.home()), id="write_dir_tree")
+			with Horizontal(id="add_row_buttons"):
+				yield Button("Save here", id="save_dir", variant="primary")
+				yield Button("Cancel", id="cancel_dir", variant="default")
+
+	def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
+		self._selected_dir = event.path
+		self.query_one("#write_dir_input", Input).value = str(event.path)
+		event.stop()
+
+	def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+		# When a file is clicked, use its parent directory
+		self._selected_dir = event.path.parent
+		self.query_one("#write_dir_input", Input).value = str(event.path.parent)
+		event.stop()
+
+	def on_input_changed(self, event: Input.Changed) -> None:
+		raw = event.value.strip()
+		self._selected_dir = Path(raw).expanduser() if raw else Path.cwd()
+
+	def on_button_pressed(self, event: Button.Pressed) -> None:
+		if event.button.id == "cancel_dir":
+			self.dismiss(None)
+			return
+		if event.button.id == "save_dir":
+			raw = self.query_one("#write_dir_input", Input).value.strip()
+			if not raw:
+				self.app.notify("Enter a directory path")
+				return
+			self.dismiss(Path(raw).expanduser())
+
+	def on_mount(self) -> None:
+		self.query_one("#write_dir_modal", Vertical).border_title = "Save to Directory"
 
 
 class ImportRingCentralCSV(HorizontalGroup):
@@ -417,8 +468,17 @@ class ImportRingCentralCSV(HorizontalGroup):
 			self.refresh_controls()
 			return
 
+		self.app.push_screen(
+			WriteDirectoryScreen(Path("results").resolve()),
+			self._write_csv_done,
+		)
+
+	def _write_csv_done(self, out_dir: Path | None) -> None:
+		if out_dir is None:
+			return
+
 		try:
-			rc_csv = RingCentralCSV()
+			rc_csv = RingCentralCSV(csv_path_out=str(out_dir))
 			csv_path = rc_csv.writer(self.fieldnames, self.csv_data)
 			self.app.notify(f"Saved: {csv_path}")
 		except Exception as e:
@@ -570,6 +630,9 @@ class RingCentralCSVApp(App):
 
 		# Ensure controls start in correct state
 		self.query_one(ImportRingCentralCSV).refresh_controls()
+
+		# Auto-focus the file input so drag-and-drop works without a click
+		self.query_one("#file_path_input", Input).focus()
 
 	# -------- Keybinding actions forward to the same UI methods --------
 

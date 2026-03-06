@@ -125,6 +125,32 @@ ImportRingCentralCSV {
     margin-top: 1;
 }
 
+#write_dir_modal {
+    border: round $accent;
+    width: 70%;
+    height: 70%;
+    padding: 1 2;
+    background: $panel;
+    border-title-style: bold;
+    border-title-background: $secondary-darken-1;
+}
+
+#write_dir_label {
+    margin-bottom: 1;
+    text-style: bold;
+}
+
+#write_dir_input {
+    margin-bottom: 1;
+    width: 1fr;
+}
+
+#write_dir_tree_box {
+    height: 1fr;
+    border: round $primary-darken-1;
+    margin-bottom: 1;
+}
+
 #help_modal {
     border: round $accent;
     width: 80%;
