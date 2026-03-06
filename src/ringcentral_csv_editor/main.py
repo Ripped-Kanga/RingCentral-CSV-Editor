@@ -820,7 +820,19 @@ def request_windows_console_size(rows: int = 55, cols: int = 160) -> None:
 	except Exception:
 		pass
 
+def set_windows_utf8() -> None:
+	"""Switch the Windows console to UTF-8 (code page 65001) so that Textual's
+	box-drawing and border characters render correctly instead of as garbage."""
+	try:
+		if os.name == "nt":
+			import ctypes
+			ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+			ctypes.windll.kernel32.SetConsoleCP(65001)
+	except Exception:
+		pass
+
 def on_startup(rows: int = 55, cols: int = 160) -> None:
+	set_windows_utf8()
 	request_windows_console_size(rows, cols)
 	request_terminal_size(rows, cols)
 
