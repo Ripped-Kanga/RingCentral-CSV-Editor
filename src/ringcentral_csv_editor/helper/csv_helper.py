@@ -117,18 +117,20 @@ class RingCentralCSV:
 		return cleaned
 
 
-	def writer(self, fieldnames: list[str], csv_data: list[dict]) -> Path:
+	def writer(self, fieldnames: list[str], csv_data: list[dict], out_path: Path | None = None) -> Path:
 		'''
-		Accepts incoming csv data after appended data is added to the new list. 
-		Writes a new csv file with date stamp.
+		Accepts incoming csv data after appended data is added to the new list.
+		Writes a new csv file. If out_path is given it is used as-is; otherwise
+		a timestamped filename is generated inside csv_path_out.
 		'''
-		
-		file_date = datetime.now().strftime("%Y%m%d-%H%M")
-
-		out_dir = Path(self.csv_path_out).expanduser()
-		out_dir.mkdir(parents=True, exist_ok=True)
-
-		out_path = out_dir / f"AddressBook-{file_date}.csv"
+		if out_path is None:
+			file_date = datetime.now().strftime("%Y%m%d-%H%M")
+			out_dir = Path(self.csv_path_out).expanduser()
+			out_dir.mkdir(parents=True, exist_ok=True)
+			out_path = out_dir / f"AddressBook-{file_date}.csv"
+		else:
+			out_path = Path(out_path)
+			out_path.parent.mkdir(parents=True, exist_ok=True)
 
 		with out_path.open("w", newline="", encoding="utf-8") as f:
 			writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")

@@ -156,6 +156,16 @@ ImportRingCentralCSV {
     margin-bottom: 1;
 }
 
+#write_dir_filename_label {
+    margin-top: 1;
+    text-style: bold;
+}
+
+#write_dir_filename {
+    margin-bottom: 1;
+    width: 1fr;
+}
+
 #help_modal {
     border: round $accent;
     width: 80%;

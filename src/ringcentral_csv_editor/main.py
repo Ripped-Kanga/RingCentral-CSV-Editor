@@ -10,6 +10,7 @@ import sys
 import os
 import logging
 from collections.abc import Iterable
+from datetime import datetime
 from importlib import resources
 from pathlib import Path
 from .helper.csv_helper import RingCentralCSV
@@ -204,6 +205,7 @@ class WriteDirectoryScreen(ModalScreen[Path | None]):
 	def __init__(self, default_dir: Path):
 		super().__init__()
 		self._selected_dir = default_dir
+		self._default_filename = f"AddressBook-{datetime.now().strftime('%Y%m%d-%H%M')}.csv"
 
 	def compose(self) -> ComposeResult:
 		with Vertical(id="write_dir_modal"):
@@ -211,6 +213,8 @@ class WriteDirectoryScreen(ModalScreen[Path | None]):
 			yield Input(value=str(self._selected_dir), id="write_dir_input")
 			with VerticalScroll(id="write_dir_tree_box"):
 				yield VisibleDirectoryTree(str(Path.home()), id="write_dir_tree")
+			yield Label("Filename:", id="write_dir_filename_label")
+			yield Input(value=self._default_filename, id="write_dir_filename")
 			with Horizontal(id="add_row_buttons"):
 				yield Button("Save here", id="save_dir", variant="primary")
 				yield Button("Cancel", id="cancel_dir", variant="default")
@@ -227,19 +231,23 @@ class WriteDirectoryScreen(ModalScreen[Path | None]):
 		event.stop()
 
 	def on_input_changed(self, event: Input.Changed) -> None:
-		raw = event.value.strip()
-		self._selected_dir = Path(raw).expanduser() if raw else Path.cwd()
+		if event.input.id == "write_dir_input":
+			raw = event.value.strip()
+			self._selected_dir = Path(raw).expanduser() if raw else Path.cwd()
 
 	def on_button_pressed(self, event: Button.Pressed) -> None:
 		if event.button.id == "cancel_dir":
 			self.dismiss(None)
 			return
 		if event.button.id == "save_dir":
-			raw = self.query_one("#write_dir_input", Input).value.strip()
-			if not raw:
+			dir_raw = self.query_one("#write_dir_input", Input).value.strip()
+			if not dir_raw:
 				self.app.notify("Enter a directory path")
 				return
-			self.dismiss(Path(raw).expanduser())
+			name_raw = self.query_one("#write_dir_filename", Input).value.strip() or self._default_filename
+			if not name_raw.lower().endswith(".csv"):
+				name_raw += ".csv"
+			self.dismiss(Path(dir_raw).expanduser() / name_raw)
 
 	def on_mount(self) -> None:
 		self.query_one("#write_dir_modal", Vertical).border_title = "Save to Directory"
@@ -514,14 +522,14 @@ class ImportRingCentralCSV(HorizontalGroup):
 			self._write_csv_done,
 		)
 
-	def _write_csv_done(self, out_dir: Path | None) -> None:
-		if out_dir is None:
+	def _write_csv_done(self, out_path: Path | None) -> None:
+		if out_path is None:
 			return
 
 		try:
-			rc_csv = RingCentralCSV(csv_path_out=str(out_dir))
-			csv_path = rc_csv.writer(self.fieldnames, self.csv_data)
-			self.app.notify(f"Saved: {csv_path}")
+			rc_csv = RingCentralCSV()
+			saved = rc_csv.writer(self.fieldnames, self.csv_data, out_path=out_path)
+			self.app.notify(f"Saved: {saved}")
 		except Exception as e:
 			self.app.notify(f"Write Failed: {type(e).__name__}: {e}")
 
