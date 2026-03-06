@@ -1,4 +1,4 @@
-# RingCentral CSV Editor (TUI)
+# RingCentral CSV Editor (TUI) v0.8.5
 
 A terminal-based **Textual TUI** for importing, validating, editing, and exporting RingCentral "Global Shared Address Book" CSV files.
 
