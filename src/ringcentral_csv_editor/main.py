@@ -400,7 +400,10 @@ class ImportRingCentralCSV(HorizontalGroup):
 			from tkinter import filedialog
 			root = tk.Tk()
 			root.withdraw()
-			root.wm_attributes("-topmost", True)
+			try:
+				root.wm_attributes("-topmost", True)
+			except Exception:
+				pass  # Not supported on all window managers (e.g. Wayland)
 			path = filedialog.askopenfilename(
 				title="Select CSV file",
 				filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
