@@ -195,7 +195,7 @@ class RingCentralCSV:
 
 
 	@staticmethod
-	def field_formatter(fieldnames, value: str) -> str:
+	def field_formatter(field, value: str) -> str:
 		"""
 		Automatically normalises entries based on field header. 
 		
@@ -223,7 +223,7 @@ class RingCentralCSV:
 		  1800XXXXXX      -> +611800XXXXXX
 		"""
 
-		field = fieldnames.strip().casefold()
+		field = field.strip().casefold()
 		raw_value = value.strip()
 
 		# If nothing is entered just return nothing.

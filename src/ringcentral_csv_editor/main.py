@@ -392,22 +392,57 @@ class ImportRingCentralCSV(HorizontalGroup):
 		self.refresh_controls()
 		self.app.notify("New address book ready — append rows then write to save")
 
-	def do_browse_file(self) -> None:
+	def _native_file_picker(self) -> str | None:
+		"""Open a native OS file-picker and return the chosen path, or None on cancel/failure."""
+		# Try tkinter (works on Windows and Linux with python3-tk installed)
 		try:
 			import tkinter as tk
 			from tkinter import filedialog
 			root = tk.Tk()
 			root.withdraw()
-			root.wm_attributes("-topmost", True)
+			try:
+				root.wm_attributes("-topmost", True)
+			except Exception:
+				pass  # Not supported on all window managers (e.g. Wayland)
 			path = filedialog.askopenfilename(
 				title="Select CSV file",
 				filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
 			)
 			root.destroy()
+			return path or None
 		except Exception:
+			pass
+
+		# Try zenity (GNOME / GTK environments on Linux)
+		try:
+			import subprocess
+			result = subprocess.run(
+				["zenity", "--file-selection", "--title=Select CSV file", "--file-filter=CSV files (*.csv) | *.csv"],
+				capture_output=True, text=True, timeout=60,
+			)
+			if result.returncode == 0:
+				return result.stdout.strip() or None
+		except Exception:
+			pass
+
+		# Try kdialog (KDE environments on Linux)
+		try:
+			import subprocess
+			result = subprocess.run(
+				["kdialog", "--getopenfilename", ".", "*.csv", "--title", "Select CSV file"],
+				capture_output=True, text=True, timeout=60,
+			)
+			if result.returncode == 0:
+				return result.stdout.strip() or None
+		except Exception:
+			pass
+
+		return None
+
+	def do_browse_file(self) -> None:
+		path = self._native_file_picker()
+		if path is None:
 			self.app.notify("File browser not available — type the path manually", severity="warning")
-			return
-		if not path:
 			return
 		file_input = self.query_one("#file_path_input", Input)
 		file_input.value = path
@@ -802,17 +837,6 @@ def setup_logging() -> None:
 			# logging.StreamHandler(),  # optional console output
 		],
 	)
-
-def get_logo_path() -> str:
-	'''
-	Return a filesystem path to the bundled logo.
-	Safe for disk installs and PyInstaller bundles (resources are always real files).
-	For zip-based installs the returned path may not persist; use as_file() directly
-	as a context manager in the caller instead.
-	'''
-	ref = resources.files("ringcentral_csv_editor") / "assets" / "logo.png"
-	with resources.as_file(ref) as p:
-		return str(p)
 
 if __name__ == "__main__":
 	on_startup()

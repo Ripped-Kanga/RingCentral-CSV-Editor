@@ -30,8 +30,10 @@ It's designed to:
 ## Features
 
 ### File Import
-- **Drag-and-drop** — drag a `.csv` file onto the terminal window to paste its path, then press **Enter** to load it. The input is focused automatically on startup so no clicking is required.
+- **Browse button** — opens a native OS file picker (tkinter, or zenity/kdialog on Linux). The selected file is loaded automatically.
+- **Drag-and-drop** — in terminals that support it, drag a `.csv` file onto the window to paste its path, then press **Enter**.
 - Also supports typing or pasting a path manually (surrounding quotes stripped automatically).
+- The file input is focused automatically on startup so no clicking is required.
 
 ### Address Book Management
 - **New Address Book** — creates a blank address book pre-loaded with the standard RingCentral column headers, ready for data entry without needing an existing file.
@@ -87,6 +89,33 @@ cd RingCentral-CSV-Editor
 pipx install .
 ```
 
+#### Desktop launcher (Linux, optional)
+
+After installing, register a `.desktop` entry so the app appears in your application launcher:
+
+```bash
+ringcentral-csv-editor-desktop --install
+```
+
+This writes `~/.local/share/applications/ringcentral-csv-editor.desktop` and copies the icon to `~/.local/share/icons/`. If your launcher doesn't pick it up immediately:
+
+```bash
+update-desktop-database ~/.local/share/applications
+```
+
+To remove the launcher entry before uninstalling:
+
+```bash
+ringcentral-csv-editor-desktop --uninstall
+pipx uninstall ringcentral-csv-editor
+```
+
+> **Note:** `pipx uninstall` does not remove the `.desktop` file — always run `--uninstall` first.
+
+#### Browse button on Linux
+
+The **Browse...** button tries `tkinter` first (`sudo apt install python3-tk` on Debian/Ubuntu), then falls back to `zenity` (GNOME) or `kdialog` (KDE). If none are available, type the path manually.
+
 ### pip (editable / development)
 
 ```bash
@@ -98,6 +127,10 @@ pip install -e .
 ```
 
 ### Windows
+
+A pre-built Windows installer is available on the [Releases](https://github.com/Ripped-Kanga/RingCentral-CSV-Editor/releases) page — no Python required.
+
+To install via pipx instead (requires Python 3.11+):
 
 ```powershell
 # Install pipx
@@ -133,8 +166,8 @@ python -m ringcentral_csv_editor
 ### Loading a file
 
 1. Start the app — the **File Import** input is focused automatically.
-2. **Drag** a `.csv` file onto the terminal window to paste its path, then press **Enter**.
-   - Alternatively, type or paste the path and press **Enter**.
+2. Click **Browse...** to open a native file picker and select a `.csv` file — it loads automatically.
+   - Alternatively, drag a file onto the terminal (where supported), or type/paste the path and press **Enter**.
 3. The file is validated and loaded; the table populates immediately.
 4. A duplicate warning is shown if conflicting phone numbers are detected (the import still succeeds).
 
@@ -223,6 +256,7 @@ Duplicate detection scans all four phone fields (`Home Number`, `Business Number
 src/ringcentral_csv_editor/
 ├── __main__.py          # Entry point (calls on_startup() then RingCentralCSVApp().run())
 ├── main.py              # All UI code (screens, widgets, keybindings)
+├── desktop.py           # Linux desktop entry install/uninstall CLI
 ├── helper/
 │   └── csv_helper.py    # RingCentralCSV class (read, validate, write)
 ├── assets/
@@ -240,8 +274,8 @@ src/ringcentral_csv_editor/
 ```bash
 pip install pyinstaller
 pyinstaller --onefile --name ringcentral-csv-editor \
-  --add-data "src/ringcentral_csv_editor/styles:ringcentral_csv_editor/styles" \
-  --add-data "src/ringcentral_csv_editor/assets:ringcentral_csv_editor/assets" \
+  --add-data "src/ringcentral_csv_editor/styles:styles" \
+  --add-data "src/ringcentral_csv_editor/assets:assets" \
   src/ringcentral_csv_editor/__main__.py
 ```
 
@@ -249,15 +283,17 @@ The binary is written to `dist/ringcentral-csv-editor`.
 
 ### Windows
 
+A pre-built installer is produced automatically by GitHub Actions on each release (see `.github/workflows/build-windows.yml`). To build manually:
+
 ```powershell
 pip install pyinstaller
 pyinstaller --onefile --name ringcentral-csv-editor `
-  --add-data "src/ringcentral_csv_editor/styles;ringcentral_csv_editor/styles" `
-  --add-data "src/ringcentral_csv_editor/assets;ringcentral_csv_editor/assets" `
+  --add-data "src/ringcentral_csv_editor/styles;styles" `
+  --add-data "src/ringcentral_csv_editor/assets;assets" `
   src/ringcentral_csv_editor/__main__.py
 ```
 
-Note the semicolon (`;`) separator in `--add-data` on Windows.
+Note the semicolon (`;`) separator in `--add-data` on Windows, and that the destination is `styles`/`assets` (not `ringcentral_csv_editor/styles`).
 
 ---
 
@@ -285,3 +321,6 @@ There are no automated tests. The app logs to `~/ringcentral-csv-editor/app.log`
 | Phone number rejected | Only Australian numbers are supported (mobiles `04…`, landlines `0[2378]…`, service numbers `13/1300/1800`). Include the area code for landlines. |
 | Duplicate blocked on edit | The number already exists in another row. Use the duplicate toggle (`f`) to find and resolve conflicts. |
 | App doesn't resize terminal | The terminal resize request is best-effort. Manually resize the window if needed. |
+| Browse button shows warning on Linux | Install `tkinter` (`sudo apt install python3-tk`), or ensure `zenity` (GNOME) or `kdialog` (KDE) is available. |
+| StylesheetError on startup (PyInstaller) | Ensure `--add-data` destinations are `styles` and `assets`, not `ringcentral_csv_editor/styles`. |
+| Desktop entry not removed after `pipx uninstall` | Run `ringcentral-csv-editor-desktop --uninstall` before uninstalling. |
