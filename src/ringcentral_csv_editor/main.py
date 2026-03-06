@@ -2,11 +2,12 @@
 
 __author__ = "Alan Saunders"
 __purpose__ = ""
-__version__ = "0.7.7"
+__version__ = "0.8.0"
 __github__ = "https://github.com/Ripped-Kanga/RingCentral-CSV-Editor\n"
 __disclaimer__ = ""
 
 import sys
+import os
 import logging
 from importlib import resources
 from pathlib import Path
@@ -14,7 +15,7 @@ from .helper.csv_helper import RingCentralCSV
 from textual.app import App, ComposeResult, Binding
 from textual.screen import ModalScreen
 from textual.containers import Vertical, Horizontal, HorizontalGroup, VerticalScroll
-from textual.widgets import Footer, Header, Input, Button, Static, Label, DirectoryTree, DataTable
+from textual.widgets import Footer, Header, Input, Button, Static, Label, DataTable
 
 class HelpScreen(ModalScreen[None]):
 	def compose(self) -> ComposeResult:
@@ -23,19 +24,23 @@ class HelpScreen(ModalScreen[None]):
 			yield Static(
 				"RingCentral CSV Editor — Help\n\n"
 				"Navigation\n"
-				"  ↑/↓   Move row cursor\n"
-				"  Enter Select (DirectoryTree)\n\n"
+				"  ↑/↓   Move row cursor\n\n"
 				"Shortcuts\n"
 				"  r     Read CSV (only when a .csv is selected)\n"
 				"  a     Append Row (requires headers loaded)\n"
+				"  e     Edit Row (requires rows loaded)\n"
 				"  d     Delete Row (requires rows; deletes selected row)\n"
 				"  f     Toggle Duplicates-only view\n"
 				"  w     Write CSV (timestamped output)\n"
 				"  ?     Open this help screen\n"
 				"  q     Quit\n\n"
+				"File Import\n"
+				"  - Type or paste a .csv file path and press Enter to load it.\n"
+				"  - In most terminal emulators you can drag a file onto the window\n"
+				"    to paste its path directly into the input box.\n\n"
 				"Notes\n"
 				"  - Duplicate numbers are allowed on import, but shown via warnings.\n"
-				"  - Appending blocks duplicates.\n"
+				"  - Appending and editing block duplicates.\n"
 				"What does this do?\n"
 				"This tool is designed to ease the editing of RingCentrals Global Address  Book csv file.\n"
 				"It has built in format normalisation tools to auto format fields so that they align with\n"
@@ -51,7 +56,7 @@ class HelpScreen(ModalScreen[None]):
 	def on_mount(self) -> None:
 		help_modal = self.query_one("#help_modal", Vertical)
 		help_modal.border_title = "Help"
-		
+
 
 
 class AddRowScreen(ModalScreen[dict | None]):
@@ -105,6 +110,66 @@ class AddRowScreen(ModalScreen[dict | None]):
 		self.dismiss(new_entry)
 
 
+class EditRowScreen(ModalScreen[dict | None]):
+	"""
+	Pre-populated form for editing an existing row.
+	Returns validated dict on Save, None on Cancel.
+	All field_formatter sanitisation rules apply identically to AddRowScreen.
+	"""
+
+	def __init__(self, fieldnames: list[str], current_row: dict):
+		super().__init__()
+		self.fieldnames = fieldnames
+		self.current_row = current_row
+		self._inputs: dict[str, Input] = {}
+
+	def compose(self) -> ComposeResult:
+		with Vertical(id="add_row_modal"):
+			yield Label("Edit Row", id="add_row_title")
+
+			with VerticalScroll(id="add_row_form"):
+				for i, field in enumerate(self.fieldnames):
+					with Horizontal(classes="add_row_line"):
+						yield Label(field, classes="add_row_label")
+						inp = Input(
+							value=str(self.current_row.get(field, "") or ""),
+							placeholder="(blank allowed)",
+							id=f"ef_{i}",
+						)
+						self._inputs[field] = inp
+						yield inp
+
+			with Horizontal(id="add_row_buttons"):
+				yield Button("Save", id="save_row", variant="primary")
+				yield Button("Cancel", id="cancel_row", variant="default")
+
+	def on_button_pressed(self, event: Button.Pressed) -> None:
+		if event.button.id == "cancel_row":
+			self.dismiss(None)
+			return
+
+		if event.button.id != "save_row":
+			return
+
+		rc = RingCentralCSV()
+		rc.fieldnames = self.fieldnames
+
+		new_entry: dict[str, str] = {}
+		for field, inp in self._inputs.items():
+			raw = (inp.value or "").strip()
+			try:
+				new_entry[field] = rc.field_formatter(field, raw)
+			except ValueError as e:
+				self.app.notify(f"{field}: {e}")
+				inp.focus()
+				return
+
+		self.dismiss(new_entry)
+
+	def on_mount(self) -> None:
+		self.query_one("#add_row_modal", Vertical).border_title = "Edit Row"
+
+
 class ImportRingCentralCSV(HorizontalGroup):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -121,11 +186,16 @@ class ImportRingCentralCSV(HorizontalGroup):
 			with Vertical(id="file_operations_box"):
 				yield Button("Read CSV", id="read_csv", variant="default", disabled=True)
 				yield Button("Append Row", id="append_csv", variant="default", disabled=True)
+				yield Button("Edit Row", id="edit_row", variant="default", disabled=True)
 				yield Button("Delete Row", id="delete_row", variant="default", disabled=True)
 				yield Button("Write CSV", id="write_csv", variant="default", disabled=True)
 
 			with Vertical(id="directory_box"):
-				yield DirectoryTree(str(Path.home()), id="dir_tree")
+				yield Label(
+					"Type, paste, or drag a .csv path here, then press Enter:",
+					id="file_path_label",
+				)
+				yield Input(placeholder="/path/to/AddressBook.csv", id="file_path_input")
 
 		with Vertical(id="csv_viewer", classes="content_box"):
 			yield Static("No file selected:", id="selected_path", classes="sub-header")
@@ -142,6 +212,9 @@ class ImportRingCentralCSV(HorizontalGroup):
 	def can_append_csv(self) -> bool:
 		return bool(self.fieldnames)
 
+	def can_edit_row(self) -> bool:
+		return bool(self.csv_data)
+
 	def can_delete_row(self) -> bool:
 		return bool(self.csv_data)
 
@@ -149,30 +222,44 @@ class ImportRingCentralCSV(HorizontalGroup):
 		return bool(self.fieldnames)
 
 	def refresh_controls(self) -> None:
-		# Buttons mirror the same rules as keybindings
 		self.query_one("#read_csv", Button).disabled = not self.can_read_csv()
 		self.query_one("#append_csv", Button).disabled = not self.can_append_csv()
+		self.query_one("#edit_row", Button).disabled = not self.can_edit_row()
 		self.query_one("#delete_row", Button).disabled = not self.can_delete_row()
 		self.query_one("#write_csv", Button).disabled = not self.can_write_csv()
 
-	# ---------------- DirectoryTree events ----------------
+	# ---------------- File path input events ----------------
 
-	def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
-		self.selected_path = event.path
-		self.query_one("#selected_path", Static).update(f"File: {self.selected_path}")
+	def on_input_changed(self, event: Input.Changed) -> None:
+		if event.input.id != "file_path_input":
+			return
+		raw = event.value.strip().strip('"').strip("'")
+		self.selected_path = Path(raw).expanduser() if raw else None
+		self.refresh_controls()
 
-		if self.selected_path.suffix.lower() != ".csv":
-			self.app.notify("Pick a .csv file to enable Read")
+	def on_input_submitted(self, event: Input.Submitted) -> None:
+		if event.input.id != "file_path_input":
+			return
+		raw = event.value.strip().strip('"').strip("'")
+		if not raw:
+			return
+
+		path = Path(raw).expanduser()
+		self.selected_path = path
+		self.query_one("#selected_path", Static).update(f"File: {path}")
+
+		if path.suffix.lower() != ".csv":
+			self.app.notify("Not a .csv file — pick a .csv to load")
+			self.refresh_controls()
+			return
+
+		if not path.exists():
+			self.app.notify(f"File not found: {path}")
+			self.refresh_controls()
+			return
 
 		self.refresh_controls()
-		event.stop()
-
-	def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
-		# If the user clicks a directory, treat as "no file selected".
-		self.selected_path = None
-		self.query_one("#selected_path", Static).update(f"Dir: {event.path}")
-		self.refresh_controls()
-		event.stop()
+		self.do_read_csv()
 
 	# ---------------- Buttons forward to the same actions ----------------
 
@@ -185,6 +272,10 @@ class ImportRingCentralCSV(HorizontalGroup):
 
 		if btn == "append_csv":
 			self.do_append_csv()
+			return
+
+		if btn == "edit_row":
+			self.do_edit_row()
 			return
 
 		if btn == "delete_row":
@@ -215,7 +306,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 			dups_msg = rc_csv.format_duplicate_report(self.csv_data, limit=10)
 			if dups_msg:
 				self.app.notify(dups_msg)
-				
+
 			self.populate_table(self.csv_data)
 
 			row_count = len(self.csv_data)
@@ -260,6 +351,56 @@ class ImportRingCentralCSV(HorizontalGroup):
 		except ValueError as e:
 			self.app.notify(str(e))
 
+	def do_edit_row(self) -> None:
+		if not self.can_edit_row():
+			self.app.notify("Nothing to edit")
+			self.refresh_controls()
+			return
+
+		table = self.query_one("#csv_table", DataTable)
+		try:
+			row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+			idx = int(row_key.value)
+			current_row = self.csv_data[idx]
+		except Exception:
+			self.app.notify("Select a row first")
+			return
+
+		self.app.push_screen(
+			EditRowScreen(self.fieldnames, current_row),
+			lambda result: self._edit_row_done(idx, result),
+		)
+
+	def _edit_row_done(self, idx: int, new_row: dict | None) -> None:
+		if new_row is None:
+			return
+
+		try:
+			rc = RingCentralCSV()
+			rc.fieldnames = self.fieldnames
+
+			# Check duplicates against all rows except the one being replaced
+			temp_data = [r for i, r in enumerate(self.csv_data) if i != idx]
+			rc.assert_no_duplicate_numbers(temp_data + [new_row])
+
+			self.csv_data[idx] = new_row
+
+			if self.show_dupes_only:
+				dup_rows = sorted(self.get_duplicate_row_indexes())
+				if dup_rows:
+					filtered = [self.csv_data[i] for i in dup_rows]
+					self.populate_table(filtered, source_indexes=dup_rows)
+				else:
+					self.show_dupes_only = False
+					self.populate_table(self.csv_data)
+			else:
+				self.populate_table(self.csv_data)
+
+			self.app.notify("Row updated")
+			self.refresh_controls()
+
+		except ValueError as e:
+			self.app.notify(str(e))
 
 	def do_delete_row(self) -> None:
 		if not self.can_delete_row():
@@ -400,6 +541,7 @@ class RingCentralCSVApp(App):
 		Binding("q", "quit", "Quit"),
 		Binding("r", "read_csv", "Read"),
 		Binding("a", "append_csv", "Append"),
+		Binding("e", "edit_row", "Edit Row"),
 		Binding("d", "delete_row", "Delete Row"),
 		Binding("w", "write_csv", "Write CSV"),
 		Binding("f", "toggle_dupes", "Duplicates Only"),
@@ -421,7 +563,7 @@ class RingCentralCSVApp(App):
 		file_ops.border_title = "File Operations"
 
 		dir_box = self.query_one("#directory_box", Vertical)
-		dir_box.border_title = "Directory Browser"
+		dir_box.border_title = "File Import"
 
 		csv_viewer = self.query_one("#csv_viewer", Vertical)
 		csv_viewer.border_title = "CSV Viewer"
@@ -436,6 +578,9 @@ class RingCentralCSVApp(App):
 
 	def action_append_csv(self) -> None:
 		self.query_one(ImportRingCentralCSV).do_append_csv()
+
+	def action_edit_row(self) -> None:
+		self.query_one(ImportRingCentralCSV).do_edit_row()
 
 	def action_delete_row(self) -> None:
 		self.query_one(ImportRingCentralCSV).do_delete_row()
@@ -460,6 +605,9 @@ class RingCentralCSVApp(App):
 
 		if action == "append_csv":
 			return ui.can_append_csv()
+
+		if action == "edit_row":
+			return ui.can_edit_row()
 
 		if action == "delete_row":
 			return ui.can_delete_row()
