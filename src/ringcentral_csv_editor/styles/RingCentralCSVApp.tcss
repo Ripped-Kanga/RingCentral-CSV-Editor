@@ -65,6 +65,11 @@ ImportRingCentralCSV {
     padding: 1;
 }
 
+#new_address_book {
+    background: $secondary;
+    color: $text;
+}
+
 #read_csv {
     background: $success;
     color: $text;

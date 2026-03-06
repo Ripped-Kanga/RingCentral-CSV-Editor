@@ -18,6 +18,21 @@ from textual.screen import ModalScreen
 from textual.containers import Vertical, Horizontal, HorizontalGroup, VerticalScroll
 from textual.widgets import Footer, Header, Input, Button, Static, Label, DataTable, DirectoryTree
 
+# Standard RingCentral Global Address Book column order
+RINGCENTRAL_FIELDNAMES: tuple[str, ...] = (
+	"First Name",
+	"Surname",
+	"Job Title",
+	"Company",
+	"Email",
+	"Home Number",
+	"Business Number",
+	"Mobile Number",
+	"Company Main Number",
+	"Source",
+	"External Id",
+)
+
 class HelpScreen(ModalScreen[None]):
 	def compose(self) -> ComposeResult:
 
@@ -27,6 +42,7 @@ class HelpScreen(ModalScreen[None]):
 				"Navigation\n"
 				"  ↑/↓   Move row cursor\n\n"
 				"Shortcuts\n"
+				"  n     New Address Book (blank sheet with standard headers)\n"
 				"  r     Read CSV (only when a .csv is selected)\n"
 				"  a     Append Row (requires headers loaded)\n"
 				"  e     Edit Row (requires rows loaded)\n"
@@ -243,6 +259,7 @@ class ImportRingCentralCSV(HorizontalGroup):
 			yield Label(f"RingCentral CSV Editor - {__version__}", id="title_block")
 
 			with Vertical(id="file_operations_box"):
+				yield Button("New Address Book", id="new_address_book", variant="default")
 				yield Button("Read CSV", id="read_csv", variant="default", disabled=True)
 				yield Button("Append Row", id="append_csv", variant="default", disabled=True)
 				yield Button("Edit Row", id="edit_row", variant="default", disabled=True)
@@ -325,6 +342,10 @@ class ImportRingCentralCSV(HorizontalGroup):
 	def on_button_pressed(self, event: Button.Pressed) -> None:
 		btn = event.button.id
 
+		if btn == "new_address_book":
+			self.do_new_address_book()
+			return
+
 		if btn == "read_csv":
 			self.do_read_csv()
 			return
@@ -346,6 +367,17 @@ class ImportRingCentralCSV(HorizontalGroup):
 			return
 
 	# ---------------- Actions ----------------
+
+	def do_new_address_book(self) -> None:
+		self.fieldnames = list(RINGCENTRAL_FIELDNAMES)
+		self.csv_data = []
+		self.show_dupes_only = False
+		self.selected_path = None
+		self.populate_table(self.csv_data)
+		self.query_one("#selected_path", Static).update("New Address Book")
+		self.query_one("#file_update", Static).update("There is currently 0 rows in the csv file.")
+		self.refresh_controls()
+		self.app.notify("New address book ready — append rows then write to save")
 
 	def do_read_csv(self) -> None:
 		if not self.can_read_csv():
@@ -608,6 +640,7 @@ class RingCentralCSVApp(App):
 
 	BINDINGS = [
 		Binding("q", "quit", "Quit"),
+		Binding("n", "new_address_book", "New"),
 		Binding("r", "read_csv", "Read"),
 		Binding("a", "append_csv", "Append"),
 		Binding("e", "edit_row", "Edit Row"),
@@ -644,6 +677,9 @@ class RingCentralCSVApp(App):
 		self.query_one("#file_path_input", Input).focus()
 
 	# -------- Keybinding actions forward to the same UI methods --------
+
+	def action_new_address_book(self) -> None:
+		self.query_one(ImportRingCentralCSV).do_new_address_book()
 
 	def action_read_csv(self) -> None:
 		self.query_one(ImportRingCentralCSV).do_read_csv()
