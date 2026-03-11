@@ -394,28 +394,30 @@ class ImportRingCentralCSV(HorizontalGroup):
 
 	def _native_file_picker(self) -> str | None:
 		"""Open a native OS file-picker and return the chosen path, or None on cancel/failure."""
-		# Try tkinter (works on Windows and Linux with python3-tk installed)
+		import subprocess
+
+		# Try tkinter via subprocess so Textual's event loop doesn't interfere.
+		# Works on Windows and Linux with python3-tk installed.
 		try:
-			import tkinter as tk
-			from tkinter import filedialog
-			root = tk.Tk()
-			root.withdraw()
-			try:
-				root.wm_attributes("-topmost", True)
-			except Exception:
-				pass  # Not supported on all window managers (e.g. Wayland)
-			path = filedialog.askopenfilename(
-				title="Select CSV file",
-				filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+			script = (
+				"import tkinter as tk; from tkinter import filedialog; "
+				"root = tk.Tk(); root.withdraw(); "
+				"p = filedialog.askopenfilename("
+				"title='Select CSV file', "
+				"filetypes=[('CSV files','*.csv'),('All files','*.*')]); "
+				"print(p, end='')"
 			)
-			root.destroy()
-			return path or None
+			result = subprocess.run(
+				["python3", "-c", script],
+				capture_output=True, text=True, timeout=60,
+			)
+			if result.returncode == 0 and result.stdout.strip():
+				return result.stdout.strip()
 		except Exception:
 			pass
 
 		# Try zenity (GNOME / GTK environments on Linux)
 		try:
-			import subprocess
 			result = subprocess.run(
 				["zenity", "--file-selection", "--title=Select CSV file", "--file-filter=CSV files (*.csv) | *.csv"],
 				capture_output=True, text=True, timeout=60,
@@ -427,9 +429,19 @@ class ImportRingCentralCSV(HorizontalGroup):
 
 		# Try kdialog (KDE environments on Linux)
 		try:
-			import subprocess
 			result = subprocess.run(
 				["kdialog", "--getopenfilename", ".", "*.csv", "--title", "Select CSV file"],
+				capture_output=True, text=True, timeout=60,
+			)
+			if result.returncode == 0:
+				return result.stdout.strip() or None
+		except Exception:
+			pass
+
+		# Try yad (widely available on Linux, works on X11 and Wayland)
+		try:
+			result = subprocess.run(
+				["yad", "--file-selection", "--title=Select CSV file", "--file-filter=*.csv"],
 				capture_output=True, text=True, timeout=60,
 			)
 			if result.returncode == 0:
