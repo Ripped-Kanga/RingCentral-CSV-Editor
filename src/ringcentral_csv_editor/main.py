@@ -195,6 +195,38 @@ class VisibleDirectoryTree(DirectoryTree):
 		return [p for p in paths if not p.name.startswith(".")]
 
 
+class BrowseFileScreen(ModalScreen[Path | None]):
+	"""Textual-native file browser for selecting a CSV to import."""
+
+	def compose(self) -> ComposeResult:
+		with Vertical(id="browse_file_modal"):
+			yield Label("Select a CSV file:", id="browse_file_label")
+			with VerticalScroll(id="browse_file_tree_box"):
+				yield VisibleDirectoryTree(str(Path.home()), id="browse_file_tree")
+			yield Input(placeholder="selected file path", id="browse_file_input")
+			with Horizontal(id="browse_file_buttons"):
+				yield Button("Open", id="browse_open", variant="primary")
+				yield Button("Cancel", id="browse_cancel", variant="default")
+
+	def on_mount(self) -> None:
+		self.query_one("#browse_file_modal", Vertical).border_title = "Browse for CSV"
+
+	def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+		self.query_one("#browse_file_input", Input).value = str(event.path)
+		event.stop()
+
+	def on_button_pressed(self, event: Button.Pressed) -> None:
+		if event.button.id == "browse_cancel":
+			self.dismiss(None)
+			return
+		if event.button.id == "browse_open":
+			raw = self.query_one("#browse_file_input", Input).value.strip()
+			if not raw:
+				self.app.notify("Select a file first", severity="warning")
+				return
+			self.dismiss(Path(raw).expanduser())
+
+
 class WriteDirectoryScreen(ModalScreen[Path | None]):
 	"""
 	Browse and confirm an output directory before writing the CSV.
@@ -392,63 +424,17 @@ class ImportRingCentralCSV(HorizontalGroup):
 		self.refresh_controls()
 		self.app.notify("New address book ready — append rows then write to save")
 
-	def _native_file_picker(self) -> str | None:
-		"""Open a native OS file-picker and return the chosen path, or None on cancel/failure."""
-		# Try tkinter (works on Windows and Linux with python3-tk installed)
-		try:
-			import tkinter as tk
-			from tkinter import filedialog
-			root = tk.Tk()
-			root.withdraw()
-			try:
-				root.wm_attributes("-topmost", True)
-			except Exception:
-				pass  # Not supported on all window managers (e.g. Wayland)
-			path = filedialog.askopenfilename(
-				title="Select CSV file",
-				filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-			)
-			root.destroy()
-			return path or None
-		except Exception:
-			pass
-
-		# Try zenity (GNOME / GTK environments on Linux)
-		try:
-			import subprocess
-			result = subprocess.run(
-				["zenity", "--file-selection", "--title=Select CSV file", "--file-filter=CSV files (*.csv) | *.csv"],
-				capture_output=True, text=True, timeout=60,
-			)
-			if result.returncode == 0:
-				return result.stdout.strip() or None
-		except Exception:
-			pass
-
-		# Try kdialog (KDE environments on Linux)
-		try:
-			import subprocess
-			result = subprocess.run(
-				["kdialog", "--getopenfilename", ".", "*.csv", "--title", "Select CSV file"],
-				capture_output=True, text=True, timeout=60,
-			)
-			if result.returncode == 0:
-				return result.stdout.strip() or None
-		except Exception:
-			pass
-
-		return None
-
 	def do_browse_file(self) -> None:
-		path = self._native_file_picker()
-		if path is None:
-			self.app.notify("File browser not available — type the path manually", severity="warning")
-			return
-		file_input = self.query_one("#file_path_input", Input)
-		file_input.value = path
-		self.selected_path = Path(path)
-		self.refresh_controls()
-		self.do_read_csv()
+		def _on_browse_done(path: Path | None) -> None:
+			if path is None:
+				return
+			file_input = self.query_one("#file_path_input", Input)
+			file_input.value = str(path)
+			self.selected_path = path
+			self.refresh_controls()
+			self.do_read_csv()
+
+		self.app.push_screen(BrowseFileScreen(), _on_browse_done)
 
 	def do_read_csv(self) -> None:
 		if not self.can_read_csv():
@@ -820,7 +806,19 @@ def request_windows_console_size(rows: int = 55, cols: int = 160) -> None:
 	except Exception:
 		pass
 
+def set_windows_utf8() -> None:
+	"""Switch the Windows console to UTF-8 (code page 65001) so that Textual's
+	box-drawing and border characters render correctly instead of as garbage."""
+	try:
+		if os.name == "nt":
+			import ctypes
+			ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+			ctypes.windll.kernel32.SetConsoleCP(65001)
+	except Exception:
+		pass
+
 def on_startup(rows: int = 55, cols: int = 160) -> None:
+	set_windows_utf8()
 	request_windows_console_size(rows, cols)
 	request_terminal_size(rows, cols)
 
