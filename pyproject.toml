@@ -5,9 +5,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ringcentral-csv-editor"
-version = "0.8.5"
+version = "0.9.0"
 requires-python = ">=3.11"
-dependencies = ["textual>=0.60.0"]
+# flet[desktop] pulls the platform-correct GUI client:
+#   flet-desktop       on Windows / macOS
+#   flet-desktop-light on Linux
+dependencies = ["flet[desktop]==0.28.3"]
 
 [project.scripts]
 ringcentral-csv-editor = "ringcentral_csv_editor.__main__:main"
@@ -17,4 +20,4 @@ ringcentral-csv-editor-desktop = "ringcentral_csv_editor.desktop:main"
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-ringcentral_csv_editor = ["assets/*.png", "styles/*.tcss"]
+ringcentral_csv_editor = ["assets/*.png"]
