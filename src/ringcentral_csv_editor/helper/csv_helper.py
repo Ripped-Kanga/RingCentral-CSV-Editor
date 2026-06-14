@@ -283,7 +283,7 @@ class RingCentralCSV:
 				return "+61" + number_cleaned
 			if re.fullmatch(r"1300\d{6}", number_cleaned) or re.fullmatch(r"1800\d{6}", number_cleaned):
 				return "+61" + number_cleaned
-			if re.fullmatch(r"6113\d{4}", number_cleaned) or re.fullmatch(r"61(300|800)\d{6}", number_cleaned):
+			if re.fullmatch(r"6113\d{4}", number_cleaned) or re.fullmatch(r"611(300|800)\d{6}", number_cleaned):
 				return "+" + number_cleaned
 
 			raise ValueError("Not a valid AU phone number (mobile, landline(must include area code(08,07,03...)), or 13/1300/1800)")

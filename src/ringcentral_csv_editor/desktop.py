@@ -25,7 +25,7 @@ Exec=ringcentral-csv-editor
 Icon=ringcentral-csv-editor
 Type=Application
 Categories=Utility;Office;
-Terminal=true
+Terminal=false
 """
 
 

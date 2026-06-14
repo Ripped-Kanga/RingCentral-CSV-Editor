@@ -1,6 +1,13 @@
-# RingCentral CSV Editor (TUI) v0.8.5
+# RingCentral CSV Editor (GUI) v0.9.0
 
-A terminal-based **Textual TUI** for importing, validating, editing, and exporting RingCentral "Global Shared Address Book" CSV files.
+A cross-platform **desktop GUI** (built with [Flet](https://flet.dev/)) for
+importing, validating, editing, and exporting RingCentral "Global Shared Address
+Book" CSV files. Runs on **Windows** and **Linux**.
+
+> **v0.9.0 — modernised UI.** The application moved from a terminal TUI (Textual)
+> to a native windowed desktop GUI. All functionality was retained; the CSV engine
+> (`helper/csv_helper.py`) is unchanged. File open/save now use **native OS
+> dialogs**.
 
 It's designed to:
 - **Find the real header row** even when RingCentral includes "junk" preamble text
@@ -17,11 +24,11 @@ It's designed to:
 - [Install](#install)
 - [Run](#run)
 - [Usage Overview](#usage-overview)
-- [Keybindings](#keybindings)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
 - [Field Validation](#field-validation)
 - [Duplicate Numbers](#duplicate-numbers)
 - [Project Layout](#project-layout)
-- [Build Executable (PyInstaller)](#build-executable-pyinstaller)
+- [Build a Standalone Executable](#build-a-standalone-executable)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
 
@@ -29,35 +36,45 @@ It's designed to:
 
 ## Features
 
-### File Import
-- **Browse button** — opens a native OS file picker (tkinter, or zenity/kdialog on Linux). The selected file is loaded automatically.
-- **Drag-and-drop** — in terminals that support it, drag a `.csv` file onto the window to paste its path, then press **Enter**.
-- Also supports typing or pasting a path manually (surrounding quotes stripped automatically).
-- The file input is focused automatically on startup so no clicking is required.
+### Modern desktop UI
+- Native windowed app (Material 3 theme, light/dark toggle in the title bar).
+- Toolbar with clearly labelled, icon-backed actions; buttons enable/disable
+  based on context (e.g. **Edit**/**Delete** require a selected row).
+- Status bar showing the current file, row count, and a duplicate-count chip.
+
+### File Import / Export
+- **Open** — a **native OS file dialog** filtered to `.csv`. The real header row
+  is detected automatically (RingCentral preamble skipped), read with UTF-8 BOM
+  support.
+- **Write** — a **native OS save dialog**; pick the folder and filename. The
+  default filename is timestamped (`AddressBook-YYYYMMDD-HHMM.csv`) and `.csv` is
+  appended automatically if omitted.
 
 ### Address Book Management
-- **New Address Book** — creates a blank address book pre-loaded with the standard RingCentral column headers, ready for data entry without needing an existing file.
-- **Read CSV** — detects the real header row by scanning for `First Name` / `Surname` (skips RingCentral preamble), reads with UTF-8 BOM support.
-- **DataTable viewer** — scrollable table with row cursor for keyboard navigation.
-- **Append Row** — modal form to add a new row with per-field validation. Duplicate phone numbers are blocked.
-- **Edit Row** — modal form pre-populated with the selected row's current values. All field validation rules apply. Duplicate checks exclude the row being replaced.
-- **Delete Row** — removes the selected row; duplicate-only view re-filters automatically.
-
-### Write CSV
-- Opens a **directory browser** to choose the output folder, with a **hidden-file filtered** tree (dotfiles not shown).
-- Editable **filename field** pre-filled with a timestamped default (`AddressBook-YYYYMMDD-HHMM.csv`). Customize or leave blank to use the default. `.csv` is appended automatically if omitted.
-- Output directory is created if it does not exist.
+- **New Address Book** — a blank book pre-loaded with the standard RingCentral
+  column headers, ready for data entry without an existing file.
+- **DataTable viewer** — scrollable table; click a row to select it.
+- **Append Row** — modal form with per-field validation; duplicate phone numbers
+  are blocked.
+- **Edit Row** — modal form pre-populated with the selected row's values; same
+  validation; duplicate checks exclude the row being replaced.
+- **Delete Row** — removes the selected row; the duplicates-only view re-filters
+  automatically.
 
 ### Duplicate Detection
-- **On Read** — warns if duplicates exist; import still succeeds.
-- **On Append / Edit** — blocks duplicates with a clear error message.
-- **Toggle duplicate-only view** (`f`) — filters the table to only show rows with conflicting phone numbers for fast cleanup.
+- **On import** — warns if duplicates exist; import still succeeds.
+- **On append / edit** — blocks duplicates with a clear error message.
+- **Toggle duplicates-only view** (`f`) — filters the table to only rows with
+  conflicting phone numbers for fast cleanup.
 
 ---
 
 ## Requirements
 - Python **3.11+**
-- [`textual`](https://textual.textualize.io/) `>= 0.60.0`
+- [`flet[desktop]`](https://flet.dev/) `== 0.28.3` (installed automatically)
+
+The `[desktop]` extra pulls the platform-correct GUI client:
+`flet-desktop` on Windows, `flet-desktop-light` on Linux.
 
 ---
 
@@ -69,7 +86,7 @@ It's designed to:
 pipx install git+https://github.com/Ripped-Kanga/RingCentral-CSV-Editor.git
 ```
 
-Upgrade to the latest release at any time:
+Upgrade at any time:
 
 ```bash
 pipx upgrade ringcentral-csv-editor
@@ -91,30 +108,42 @@ pipx install .
 
 #### Desktop launcher (Linux, optional)
 
-After installing, register a `.desktop` entry so the app appears in your application launcher:
+Register a `.desktop` entry so the app appears in your application launcher:
 
 ```bash
 ringcentral-csv-editor-desktop --install
 ```
 
-This writes `~/.local/share/applications/ringcentral-csv-editor.desktop` and copies the icon to `~/.local/share/icons/`. If your launcher doesn't pick it up immediately:
+This writes `~/.local/share/applications/ringcentral-csv-editor.desktop` and
+copies the icon to `~/.local/share/icons/`. If your launcher doesn't pick it up:
 
 ```bash
 update-desktop-database ~/.local/share/applications
 ```
 
-To remove the launcher entry before uninstalling:
+To remove it before uninstalling:
 
 ```bash
 ringcentral-csv-editor-desktop --uninstall
 pipx uninstall ringcentral-csv-editor
 ```
 
-> **Note:** `pipx uninstall` does not remove the `.desktop` file — always run `--uninstall` first.
+> **Note:** `pipx uninstall` does not remove the `.desktop` file — always run
+> `--uninstall` first.
 
-#### Browse button on Linux
+### Windows
 
-The **Browse...** button tries `tkinter` first (`sudo apt install python3-tk` on Debian/Ubuntu), then falls back to `zenity` (GNOME) or `kdialog` (KDE). If none are available, type the path manually.
+A pre-built Windows installer is available on the
+[Releases](https://github.com/Ripped-Kanga/RingCentral-CSV-Editor/releases) page —
+no Python required.
+
+To install via pipx instead (requires Python 3.11+):
+
+```powershell
+python -m pip install pipx
+python -m pipx ensurepath
+pipx install git+https://github.com/Ripped-Kanga/RingCentral-CSV-Editor.git
+```
 
 ### pip (editable / development)
 
@@ -124,25 +153,6 @@ cd RingCentral-CSV-Editor
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -e .
-```
-
-### Windows
-
-A pre-built Windows installer is available on the [Releases](https://github.com/Ripped-Kanga/RingCentral-CSV-Editor/releases) page — no Python required.
-
-To install via pipx instead (requires Python 3.11+):
-
-```powershell
-# Install pipx
-python -m pip install pipx
-python -m pipx ensurepath
-
-# From GitHub
-pipx install git+https://github.com/Ripped-Kanga/RingCentral-CSV-Editor.git
-
-# Or from a local clone
-cd RingCentral-CSV-Editor
-pipx install .
 ```
 
 ---
@@ -164,67 +174,62 @@ python -m ringcentral_csv_editor
 ## Usage Overview
 
 ### Loading a file
-
-1. Start the app — the **File Import** input is focused automatically.
-2. Click **Browse...** to open a native file picker and select a `.csv` file — it loads automatically.
-   - Alternatively, drag a file onto the terminal (where supported), or type/paste the path and press **Enter**.
-3. The file is validated and loaded; the table populates immediately.
-4. A duplicate warning is shown if conflicting phone numbers are detected (the import still succeeds).
+1. Click **Open** (or press `o`) — a native file dialog opens, filtered to `.csv`.
+2. Pick a file; it's validated and loaded, and the table populates.
+3. A duplicate warning appears if conflicting phone numbers are detected (the
+   import still succeeds).
 
 ### Creating a new address book from scratch
-
-1. Click **New Address Book** or press `n`.
-2. The table is initialised with the standard RingCentral column headers and no rows.
-3. Use **Append Row** (`a`) to add contacts, then **Write CSV** (`w`) to save.
+1. Click **New** (or press `n`).
+2. The table is initialised with the standard RingCentral headers and no rows.
+3. Use **Append** (`a`) to add contacts, then **Write** (`w`) to save.
 
 ### Editing data
-
 | Action | Button | Key |
 |---|---|---|
-| Append a new row | Append Row | `a` |
-| Edit the selected row | Edit Row | `e` |
-| Delete the selected row | Delete Row | `d` |
+| Append a new row | Append | `a` |
+| Edit the selected row | Edit | `e` |
+| Delete the selected row | Delete | `d` |
 
-All modal forms validate every field before accepting the input (see [Field Validation](#field-validation)).
+Click a row to select it first. All modal forms validate every field before
+accepting input (see [Field Validation](#field-validation)).
 
 ### Saving
-
-1. Press `w` or click **Write CSV**.
-2. A **Save to Directory** dialog opens.
-3. Browse to the desired output folder using the directory tree, or type a path directly.
-4. Edit the **Filename** field if needed (default: `AddressBook-YYYYMMDD-HHMM.csv`).
-5. Click **Save here**.
+1. Press `w` or click **Write**.
+2. A native save dialog opens with a timestamped default filename.
+3. Choose the folder/filename and save (`.csv` is appended if omitted).
 
 ---
 
-## Keybindings
+## Keyboard Shortcuts
 
 | Key | Action | Condition |
 |---|---|---|
 | `n` | New Address Book | Always |
-| `r` | Read CSV | Valid `.csv` path entered |
+| `o` | Open CSV | Always |
 | `a` | Append Row | Headers loaded |
-| `e` | Edit Row | Rows present |
-| `d` | Delete Row | Rows present |
+| `e` | Edit Row | A row is selected |
+| `d` | Delete Row | A row is selected |
 | `f` | Toggle duplicates-only view | Rows present |
 | `w` | Write CSV | Headers loaded |
-| `?` | Help | Always |
+| `h` | Help | Always |
 | `q` | Quit | Always |
 
-Keybindings are silently disabled when their precondition is not met (the footer indicator dims).
+Buttons whose precondition isn't met are disabled.
 
 ---
 
 ## Field Validation
 
-All fields are validated and normalised by `RingCentralCSV.field_formatter()` when a row is added or edited.
+All fields are validated and normalised by `RingCentralCSV.field_formatter()` when
+a row is added or edited.
 
 | Field | Rule |
 |---|---|
 | First Name, Surname | Letters, spaces, hyphens, apostrophes only. Title-cased. |
 | Job Title, Company | Letters, numbers, spaces, hyphens, apostrophes, ampersands, periods. Title-cased. |
 | Email | Must match `name@domain.tld` (lowercased). |
-| Home / Business / Mobile / Company Main Number | Australian numbers normalised to E.164 format (see below). |
+| Home / Business / Mobile / Company Main Number | Australian numbers normalised to E.164 (see below). |
 | Source, External Id | Passed through unchanged. |
 
 ### Australian phone number normalisation
@@ -242,11 +247,13 @@ All fields are validated and normalised by `RingCentralCSV.field_formatter()` wh
 
 ## Duplicate Numbers
 
-Duplicate detection scans all four phone fields (`Home Number`, `Business Number`, `Mobile Number`, `Company Main Number`) across every row.
+Duplicate detection scans all four phone fields (`Home Number`, `Business Number`,
+`Mobile Number`, `Company Main Number`) across every row.
 
-- **Import** — duplicates are reported in a notification but the file loads successfully.
-- **Append / Edit** — duplicates are **blocked**. The error message lists the conflicting rows and fields.
-- **Toggle view** (`f`) — shows only the rows involved in at least one duplicate, making bulk cleanup straightforward.
+- **Import** — duplicates are reported in a notification but the file loads.
+- **Append / Edit** — duplicates are **blocked**; the error lists the conflicting
+  rows and fields.
+- **Toggle view** (`f`) — shows only rows involved in at least one duplicate.
 
 ---
 
@@ -254,46 +261,39 @@ Duplicate detection scans all four phone fields (`Home Number`, `Business Number
 
 ```
 src/ringcentral_csv_editor/
-├── __main__.py          # Entry point (calls on_startup() then RingCentralCSVApp().run())
-├── main.py              # All UI code (screens, widgets, keybindings)
+├── __main__.py          # Entry point (main() -> run())
+├── main.py              # All GUI code (AddressBookGUI, dialogs, keybindings, run())
 ├── desktop.py           # Linux desktop entry install/uninstall CLI
 ├── helper/
-│   └── csv_helper.py    # RingCentralCSV class (read, validate, write)
-├── assets/
-│   └── logo.png
-└── styles/
-    └── RingCentralCSVApp.tcss
+│   └── csv_helper.py    # RingCentralCSV class (read, validate, write) — UI-agnostic
+└── assets/
+    └── logo.png
 ```
 
 ---
 
-## Build Executable (PyInstaller)
+## Build a Standalone Executable
 
-### Linux
+The app is packaged with [`flet pack`](https://flet.dev/docs/publish), which wraps
+PyInstaller and bundles the Flet desktop client.
 
 ```bash
-pip install pyinstaller
-pyinstaller --onefile --name ringcentral-csv-editor \
-  --add-data "src/ringcentral_csv_editor/styles:styles" \
-  --add-data "src/ringcentral_csv_editor/assets:assets" \
-  src/ringcentral_csv_editor/__main__.py
+pip install "flet[all]==0.28.3" pyinstaller
+flet pack src/ringcentral_csv_editor/__main__.py \
+  --name ringcentral-csv-editor \
+  --icon logo.png \
+  --product-name "RingCentral CSV Editor" \
+  --product-version "0.9.0" \
+  --company-name "Ripped-Kanga"
 ```
 
-The binary is written to `dist/ringcentral-csv-editor`.
+The binary is written to `dist/`. The `--icon` is honoured on Windows/macOS
+(ignored on Linux). Build on the OS you want to target.
 
-### Windows
-
-A pre-built installer is produced automatically by GitHub Actions on each release (see `.github/workflows/build-windows.yml`). To build manually:
-
-```powershell
-pip install pyinstaller
-pyinstaller --onefile --name ringcentral-csv-editor `
-  --add-data "src/ringcentral_csv_editor/styles;styles" `
-  --add-data "src/ringcentral_csv_editor/assets;assets" `
-  src/ringcentral_csv_editor/__main__.py
-```
-
-Note the semicolon (`;`) separator in `--add-data` on Windows, and that the destination is `styles`/`assets` (not `ringcentral_csv_editor/styles`).
+### Windows installer
+A signed-style installer is produced automatically by GitHub Actions on each
+tagged release (see `.github/workflows/build-windows.yml`): `flet pack` builds the
+exe, then Inno Setup (`installer.iss`) packages it.
 
 ---
 
@@ -308,7 +308,9 @@ pip install -e .
 python -m ringcentral_csv_editor
 ```
 
-There are no automated tests. The app logs to `~/ringcentral-csv-editor/app.log` at `INFO` level; change `logging.INFO` to `logging.DEBUG` in `main.py` for verbose output.
+There are no automated tests. The app logs to `~/ringcentral-csv-editor/app.log`
+at `INFO` level; change `logging.INFO` to `logging.DEBUG` in `main.py` for verbose
+output.
 
 ---
 
@@ -316,11 +318,12 @@ There are no automated tests. The app logs to `~/ringcentral-csv-editor/app.log`
 
 | Symptom | Fix |
 |---|---|
-| File won't load | Ensure the path ends in `.csv` and the file exists. Surrounding quotes are stripped automatically. |
+| File won't load | Ensure the path ends in `.csv` and the file exists. |
 | "Could not find header row" | The file must contain columns named `First Name` and `Surname`. |
 | Phone number rejected | Only Australian numbers are supported (mobiles `04…`, landlines `0[2378]…`, service numbers `13/1300/1800`). Include the area code for landlines. |
-| Duplicate blocked on edit | The number already exists in another row. Use the duplicate toggle (`f`) to find and resolve conflicts. |
-| App doesn't resize terminal | The terminal resize request is best-effort. Manually resize the window if needed. |
-| Browse button shows warning on Linux | Install `tkinter` (`sudo apt install python3-tk`), or ensure `zenity` (GNOME) or `kdialog` (KDE) is available. |
-| StylesheetError on startup (PyInstaller) | Ensure `--add-data` destinations are `styles` and `assets`, not `ringcentral_csv_editor/styles`. |
-| Desktop entry not removed after `pipx uninstall` | Run `ringcentral-csv-editor-desktop --uninstall` before uninstalling. |
+| Duplicate blocked on edit | The number already exists in another row. Use the duplicates toggle (`f`) to find and resolve conflicts. |
+| Edit/Delete buttons greyed out | Click a row in the table to select it first. |
+| Window doesn't open on Linux | Ensure a graphical session is running and the GUI client is installed (`pip show flet-desktop-light`). |
+| Linux: `libmpv.so.1: cannot open shared object file` | The Flet 0.28 Linux client links the **old** `libmpv.so.1`, but modern distros (Arch, recent Fedora/Ubuntu) ship `libmpv.so.2`. Create a compatibility symlink: `sudo ln -s $(ldconfig -p \| grep -m1 'libmpv.so.2' \| awk '{print $NF}') /usr/lib/libmpv.so.1` (Arch path shown; adjust for your distro). Then re-launch. Verify the source exists first with `ls /usr/lib/libmpv.so.2*`. |
+| `flet pack` fails with "install PyInstaller" | `pip install pyinstaller` — `flet pack` wraps it but doesn't install it. |
+| `flet` command not found when packaging | Install the CLI: `pip install "flet[cli]==0.28.3"` (or `flet[all]`). |
