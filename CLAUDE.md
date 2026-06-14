@@ -35,7 +35,7 @@ ringcentral-csv-editor
 pip install "flet[all]==0.28.3" pyinstaller   # flet-cli + desktop client + PyInstaller
 flet pack src/ringcentral_csv_editor/__main__.py \
   --name ringcentral-csv-editor \
-  --icon logo.png \
+  --icon logo.ico \
   --product-name "RingCentral CSV Editor" \
   --product-version "0.9.0" \
   --company-name "Ripped-Kanga"
@@ -193,6 +193,12 @@ so tolerate that one call when testing the invalid-field path.
   `flet pack` (not raw PyInstaller) then packages it with Inno Setup
   (`installer.iss`). The exe name `ringcentral-csv-editor.exe` is unchanged, so
   `installer.iss` needed no edits.
+- **Windows icon must be `.ico` (verified gotcha):** PyInstaller on Windows only
+  accepts `exe`/`ico` icons; passing `--icon logo.png` fails with
+  `ModuleNotFoundError: No module named 'PIL'` unless Pillow is installed to
+  auto-convert. A committed multi-resolution `logo.ico` (root) is used via
+  `--icon logo.ico`; the CI also installs `pillow` as a safety net. Do **not**
+  revert the icon arg to `logo.png`. (Linux ignores `--icon` entirely.)
 - `package-data` ships `assets/*.png` only (the old `styles/*.tcss` is gone).
 - **Linux libmpv requirement (verified gotcha):** the Flet 0.28 desktop client
   (`flet-desktop-light`) dynamically links `libmpv.so.1`. Modern distros (Arch,

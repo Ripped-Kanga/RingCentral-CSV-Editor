@@ -296,7 +296,7 @@ PyInstaller and bundles the Flet desktop client.
 pip install "flet[all]==0.28.3" pyinstaller
 flet pack src/ringcentral_csv_editor/__main__.py \
   --name ringcentral-csv-editor \
-  --icon logo.png \
+  --icon logo.ico \
   --product-name "RingCentral CSV Editor" \
   --product-version "0.9.0" \
   --company-name "Ripped-Kanga"
