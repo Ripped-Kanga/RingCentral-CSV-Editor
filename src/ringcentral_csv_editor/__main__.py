@@ -1,12 +1,12 @@
-
 try:
-    from .main import RingCentralCSVApp, on_startup
+    from .main import run
 except ImportError:
-    from ringcentral_csv_editor.main import RingCentralCSVApp, on_startup
+    from ringcentral_csv_editor.main import run
+
 
 def main() -> None:
-    on_startup()
-    RingCentralCSVApp().run()
+    run()
+
 
 if __name__ == "__main__":
     main()

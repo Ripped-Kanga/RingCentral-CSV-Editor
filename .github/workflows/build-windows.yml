@@ -37,14 +37,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+          # flet[all] provides both the desktop client and the `flet` CLI
+          # (flet-cli) used by `flet pack`; flet pack wraps PyInstaller.
+          pip install "flet[all]==0.28.3"
           pip install pyinstaller
 
-      - name: Build executable with PyInstaller
+      - name: Build executable with flet pack
         run: |
-          pyinstaller --onefile --name ringcentral-csv-editor `
-            --add-data "src/ringcentral_csv_editor/styles;styles" `
-            --add-data "src/ringcentral_csv_editor/assets;assets" `
-            src/ringcentral_csv_editor/__main__.py
+          flet pack src/ringcentral_csv_editor/__main__.py `
+            --name ringcentral-csv-editor `
+            --icon logo.png `
+            --product-name "RingCentral CSV Editor" `
+            --product-version "${{ steps.get_version.outputs.version }}" `
+            --company-name "Ripped-Kanga" `
+            --copyright "Ripped-Kanga"
 
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
