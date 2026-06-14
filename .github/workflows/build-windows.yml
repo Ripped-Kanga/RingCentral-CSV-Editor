@@ -40,13 +40,15 @@ jobs:
           # flet[all] provides both the desktop client and the `flet` CLI
           # (flet-cli) used by `flet pack`; flet pack wraps PyInstaller.
           pip install "flet[all]==0.28.3"
-          pip install pyinstaller
+          # Pillow lets PyInstaller process icons (safety net; not needed for
+          # the committed .ico, but covers any other image handling).
+          pip install pyinstaller pillow
 
       - name: Build executable with flet pack
         run: |
           flet pack src/ringcentral_csv_editor/__main__.py `
             --name ringcentral-csv-editor `
-            --icon logo.png `
+            --icon logo.ico `
             --product-name "RingCentral CSV Editor" `
             --product-version "${{ steps.get_version.outputs.version }}" `
             --company-name "Ripped-Kanga" `
